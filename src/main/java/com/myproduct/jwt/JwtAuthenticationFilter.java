@@ -1,0 +1,62 @@
+package com.myproduct.jwt;
+
+import com.myproduct.service.AuthService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NullMarked;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+@Component
+@RequiredArgsConstructor
+@NullMarked
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+  @Autowired
+  @Lazy
+  private AuthService authService;
+  private final JwtHelper jwtHelper;
+
+
+  @Override
+  protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    String authHeader = request.getHeader("Authorization");
+    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+      String token = authHeader.substring(7);
+      String username = jwtHelper.getUsername(token);
+      if (jwtHelper.isValid(token)) {
+        if (username != null) {
+
+          UserDetails userDetails = authService.loadUserByUsername(username);
+
+          UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                  userDetails,
+                  null,
+                  userDetails.getAuthorities()
+          );
+          authToken.setDetails(
+                  new WebAuthenticationDetailsSource()
+          );
+
+
+          SecurityContextHolder.getContext().setAuthentication(authToken);
+
+        }
+
+
+      }
+
+    }
+    filterChain.doFilter(request,response);
+  }
+}

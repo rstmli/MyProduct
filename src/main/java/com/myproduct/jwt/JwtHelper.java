@@ -1,0 +1,55 @@
+package com.myproduct.jwt;
+
+import com.myproduct.dao.entity.UserEntity;
+import com.myproduct.util.enums.User_Role;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
+
+import java.security.Key;
+import java.util.Date;
+
+@Component
+public class JwtHelper {
+  @Value("${jwt.secret_key}")
+  private byte[] SECRET_KEY;
+  @Value("${jwt.expired_date}")
+  private Long EXPIRED_DATE;
+
+  public String generateToken(UserDetails user){
+    return Jwts.builder()
+            .signWith(secretKey())
+            .setSubject(user.getUsername())
+            .claim("role",user.getAuthorities())
+            .setExpiration(
+                    new Date(System.currentTimeMillis() + EXPIRED_DATE)
+            )
+            .compact();
+  }
+
+
+  public Claims decodeToken(String token){
+    return Jwts.parserBuilder().setSigningKey(secretKey()).build().parseClaimsJws(token).getBody();
+  }
+
+
+  public String getUsername(String token){
+      return decodeToken(token).getSubject();
+  }
+
+  public boolean isValid(String token){
+    return decodeToken(token).getExpiration().after(new Date());
+  }
+
+
+
+
+  private Key secretKey(){
+    return Keys.hmacShaKeyFor(SECRET_KEY);
+  }
+
+
+}
